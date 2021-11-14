@@ -243,10 +243,6 @@ bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_exp
 	dnscache.ctx = ctx;
 
 	return true;
-
-cleanup_edb:
-	evdns_base_free(dnscache.edb, 1);
-	return false;
 }
 
 void dnscache_cleanup(void)
