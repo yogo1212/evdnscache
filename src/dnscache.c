@@ -40,11 +40,12 @@ typedef struct {
 } dnscache_entry_t;
 
 // TODO try to reduce vars in global scope
-static dnscache_entry_t *url_list;
 
 struct {
 	struct event_base *evb;
 	struct evdns_base *edb;
+
+	dnscache_entry_t *url_list;
 } dnscache;
 
 static void ipv4_time_out(evutil_socket_t fd, short what, void *ctx)
@@ -217,12 +218,12 @@ bool dnscache_add(const char *name, dnscache_add_cb add_cb, dnscache_expire_cb e
 		return false;
 
 	dnscache_entry_t *d;
-	HASH_FIND_STR(url_list, hostname, d);
+	HASH_FIND_STR(dnscache.url_list, hostname, d);
 	if (d)
 		return false;
 
 	d = dnscache_entry_new(hostname, add_cb, expire_cb, ctx);
-	HASH_ADD_STR(url_list, hostname, d);
+	HASH_ADD_STR(dnscache.url_list, hostname, d);
 
 	return true;
 }
@@ -238,7 +239,7 @@ bool dnscache_init(struct event_base *base)
 		return false;
 	}
 
-	url_list = NULL;
+	dnscache.url_list = NULL;
 
 	return true;
 }
@@ -246,8 +247,8 @@ bool dnscache_init(struct event_base *base)
 void dnscache_cleanup(void)
 {
 	dnscache_entry_t *d, *tmp;
-	HASH_ITER(hh, url_list, d, tmp) {
-		HASH_DEL(url_list, d);
+	HASH_ITER(hh, dnscache.url_list, d, tmp) {
+		HASH_DEL(dnscache.url_list, d);
 		dnscache_entry_free(d);
 	}
 
