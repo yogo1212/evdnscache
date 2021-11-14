@@ -205,25 +205,21 @@ static void dnscache_entry_free(dnscache_entry_t *d)
 	free(d);
 }
 
-static dnscache_entry_t *dnscache_find(const char *name, bool create)
+bool dnscache_add(const char *name)
 {
 	char hostname[MAX_HOSTNAME_LEN_WITH_ZT];
-	memset(hostname, 0, sizeof(hostname));
-	strncpy(hostname, name, sizeof(hostname) - 1);
+	if (!copy_string(hostname, name, sizeof(hostname)))
+		return false;
 
 	dnscache_entry_t *d;
-	HASH_FIND(hh, url_list, hostname, sizeof(hostname), d);
-	if (!d && create) {
-		d = dnscache_entry_new(hostname);
-		HASH_ADD(hh, url_list, hostname, sizeof(d->hostname), d);
-	}
+	HASH_FIND_STR(url_list, hostname, d);
+	if (d)
+		return false;
 
-	return d;
-}
+	d = dnscache_entry_new(hostname);
+	HASH_ADD_STR(url_list, hostname, d);
 
-void dnscache_add(const char *name)
-{
-	dnscache_find(name, true);
+	return true;
 }
 
 bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
