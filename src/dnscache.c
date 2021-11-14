@@ -32,6 +32,10 @@ typedef struct {
 	struct event *evt;
 	struct evdns_request *active_request;
 
+	dnscache_add_cb add_cb;
+	dnscache_expire_cb expire_cb;
+	void *ctx;
+
 	UT_hash_handle hh;
 } dnscache_entry_t;
 
@@ -41,10 +45,6 @@ static dnscache_entry_t *url_list;
 struct {
 	struct event_base *evb;
 	struct evdns_base *edb;
-
-	dnscache_add_cb add_cb;
-	dnscache_expire_cb expire_cb;
-	void *ctx;
 } dnscache;
 
 static void ipv4_time_out(evutil_socket_t fd, short what, void *ctx)
@@ -82,14 +82,14 @@ static void _expire_ipv4(ipv4_entry_t *ipv4, void *ctx)
 {
 	dnscache_entry_t *d = ctx;
 
-	if (dnscache.expire_cb) {
+	if (d->expire_cb) {
 		char str_ip[INET_ADDRSTRLEN + 1];
 		if (!copy_string(str_ip, inet_ntoa(ipv4->ina), sizeof(str_ip))) {
 			log_error("ip truncated");
 			return;
 		}
 
-		dnscache.expire_cb(d->hostname, str_ip, dnscache.ctx);
+		d->expire_cb(d->hostname, str_ip, d->ctx);
 	}
 
 	HASH_DEL(d->ipv4, ipv4);
@@ -134,14 +134,14 @@ static void dnscache_entry_dns_cb(int err, char type, int count, int ttl, void *
 		ipv4 = ipv4_entry_create(&ina[i], _expire_ipv4, d);
 		HASH_ADD(hh, d->ipv4, ina, sizeof(ipv4->ina), ipv4);
 
-		if (dnscache.add_cb) {
+		if (d->add_cb) {
 			char str_ip[INET_ADDRSTRLEN + 1];
 			if (!copy_string(str_ip, inet_ntoa(ipv4->ina), sizeof(str_ip))) {
 				log_error("ip truncated");
 				continue;
 			}
 
-			dnscache.add_cb(d->hostname, str_ip, dnscache.ctx);
+			d->add_cb(d->hostname, str_ip, d->ctx);
 		}
 
 		ipv4_entry_reset(ipv4, ttl);
@@ -170,13 +170,14 @@ static void _dnscache_entry_refresh(evutil_socket_t fd, short what, void *arg)
 {
 	(void) fd;
 	(void) what;
+
 	dnscache_entry_t *d = arg;
 	// TODO re-think this event
 	// only add for deferring requests?
 	dnscache_entry_refresh(d);
 }
 
-static dnscache_entry_t *dnscache_entry_new(const char *hostname)
+static dnscache_entry_t *dnscache_entry_new(const char *hostname, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
 {
 	dnscache_entry_t *d = malloc(sizeof(dnscache_entry_t));
 	memcpy(d->hostname, hostname, sizeof(d->hostname));
@@ -185,6 +186,10 @@ static dnscache_entry_t *dnscache_entry_new(const char *hostname)
 	d->active_request = NULL;
 
 	d->evt = event_new(dnscache.evb, -1, EV_TIMEOUT, _dnscache_entry_refresh, d);
+
+	d->add_cb = add_cb;
+	d->expire_cb = expire_cb;
+	d->ctx = ctx;
 
 	dnscache_entry_refresh(d);
 	return d;
@@ -205,7 +210,7 @@ static void dnscache_entry_free(dnscache_entry_t *d)
 	free(d);
 }
 
-bool dnscache_add(const char *name)
+bool dnscache_add(const char *name, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
 {
 	char hostname[MAX_HOSTNAME_LEN_WITH_ZT];
 	if (!copy_string(hostname, name, sizeof(hostname)))
@@ -216,13 +221,13 @@ bool dnscache_add(const char *name)
 	if (d)
 		return false;
 
-	d = dnscache_entry_new(hostname);
+	d = dnscache_entry_new(hostname, add_cb, expire_cb, ctx);
 	HASH_ADD_STR(url_list, hostname, d);
 
 	return true;
 }
 
-bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
+bool dnscache_init(struct event_base *base)
 {
 	dnscache.evb = base;
 
@@ -234,9 +239,6 @@ bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_exp
 	}
 
 	url_list = NULL;
-	dnscache.add_cb = add_cb;
-	dnscache.expire_cb = expire_cb;
-	dnscache.ctx = ctx;
 
 	return true;
 }
