@@ -220,11 +220,6 @@ void dnscache_add(const char *name)
 
 bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
 {
-	if (sizeof(struct in_addr) != 4) {
-		log_error("sizeof(struct in_addr) != 4");
-		return false;
-	}
-
 	dnscache.evb = base;
 	dnscache.edb = evdns_base_new(base, 0);
 	if (!dnscache.edb) {
