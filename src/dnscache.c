@@ -125,20 +125,24 @@ static void dnscache_entry_dns_cb(int err, char type, int count, int ttl, void *
 	ipv4_entry_t *ipv4;
 	for (size_t i = 0; i < (size_t) count; i++) {
 		HASH_FIND(hh, d->ipv4, &ina[i], sizeof(ina[i]), ipv4);;
-		if (!ipv4) {
-			ipv4 = ipv4_entry_create(&ina[i], _expire_ipv4, d);
-			HASH_ADD(hh, d->ipv4, ina, sizeof(ipv4->ina), ipv4);
-
-			if (dnscache.add_cb) {
-				char str_ip[INET_ADDRSTRLEN + 1];
-				if (!copy_string(str_ip, inet_ntoa(ipv4->ina), sizeof(str_ip))) {
-					log_error("ip truncated");
-					continue;
-				}
-
-				dnscache.add_cb(d->hostname, str_ip, dnscache.ctx);
-			}
+		if (ipv4) {
+			ipv4_entry_reset(ipv4, ttl);
+			continue;
 		}
+
+		ipv4 = ipv4_entry_create(&ina[i], _expire_ipv4, d);
+		HASH_ADD(hh, d->ipv4, ina, sizeof(ipv4->ina), ipv4);
+
+		if (dnscache.add_cb) {
+			char str_ip[INET_ADDRSTRLEN + 1];
+			if (!copy_string(str_ip, inet_ntoa(ipv4->ina), sizeof(str_ip))) {
+				log_error("ip truncated");
+				continue;
+			}
+
+			dnscache.add_cb(d->hostname, str_ip, dnscache.ctx);
+		}
+
 		ipv4_entry_reset(ipv4, ttl);
 	}
 
