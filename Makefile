@@ -1,16 +1,25 @@
-NAME = dnscache
+NAME = evdnscache
 
-SRCDIR = src
+LIBSRCDIR = lib
+LIBOBJDIR = lib/obj
+
+APPSRCDIR = app
+APPOBJDIR = app/obj
+
+BINDIR = bin
+
+DIRS = $(APPOBJDIR) $(LIBOBJDIR) $(BINDIR)
+
 INCDIR = include
 
-OBJDIR = obj
-OUTDIR = bin
-DIRS = $(OBJDIR) $(OUTDIR)
+LIBSOURCES = $(wildcard $(LIBSRCDIR)/*.c)
+LIBOBJECTS = $(patsubst $(LIBSRCDIR)/%.c,$(LIBOBJDIR)/%.o,$(LIBSOURCES))
 
-SOURCES = $(wildcard $(SRCDIR)/*.c)
-OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
+APPSOURCES = $(wildcard $(APPSRCDIR)/*.c)
+APPOBJECTS = $(patsubst $(APPSRCDIR)/%.c,$(APPOBJDIR)/%.o,$(APPSOURCES))
 
-BIN = $(OUTDIR)/lib$(NAME).a
+LIBBIN = $(BINDIR)/lib$(NAME).a
+APPBIN = $(BINDIR)/$(NAME)
 
 CFLAGS += -std=gnu99 -pedantic -Wall -Wextra -I$(INCDIR)
 
@@ -23,18 +32,30 @@ endif
 CFLAGS += -fPIC
 CFLAGS += $(DEFINES)
 
+LIBCFLAGS += $(CFLAGS)
+
+APPCFLAGS += $(CFLAGS)
+APPLDFLAGS += -Lbin/ -levdnscache
+
+
 .PHONY: clean default debug
 
-default: $(BIN)
+default: $(LIBBIN) $(APPBIN)
 
 debug:
 	export DEBUG=1; "$(MAKE)"
 
-$(BIN): $(OBJECTS) | $(OUTDIR)
+$(LIBOBJECTS): $(LIBOBJDIR)/%.o : $(LIBSRCDIR)/%.c | $(LIBOBJDIR)
+	$(CC) -c $< -o $@ $(LIBCFLAGS)
+
+$(LIBBIN): $(LIBOBJECTS) | $(BINDIR)
 	ar rcs $@ $^
 
-$(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.c | $(OBJDIR)
-	$(CC) -c $< -o $@ $(CFLAGS)
+$(APPOBJECTS): $(APPOBJDIR)/%.o : $(APPSRCDIR)/%.c | $(APPOBJDIR)
+	$(CC) -c $< -o $@ $(APPCFLAGS)
+
+$(APPBIN): $(APPOBJECTS) | $(LIBBIN)
+	$(CC) -o $@ $^ $(APPLDFLAGS)
 
 $(DIRS):
 	mkdir -p $@
