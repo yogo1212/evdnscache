@@ -224,18 +224,12 @@ void dnscache_add(const char *name)
 bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
 {
 	dnscache.evb = base;
+
 	// TODO HUP to reload resolv.conf
-	dnscache.edb = evdns_base_new(base, 0);
+	dnscache.edb = evdns_base_new(base, EVDNS_BASE_INITIALIZE_NAMESERVERS);
 	if (!dnscache.edb) {
 		log_error("!edb");
 		return false;
-	}
-
-	// TODO investigate whether EVDNS_BASE_INITIALIZE_NAMESERVERS works instead
-	// might cause problems if resolv.conf is not available during program start
-	if (evdns_base_nameserver_ip_add(dnscache.edb, "127.0.0.1") != 0) {
-		log_error("!evdns_base_nameserver_ip_add");
-		goto cleanup_edb;
 	}
 
 	url_list = NULL;
