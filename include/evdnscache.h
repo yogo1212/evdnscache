@@ -1,5 +1,5 @@
-#ifndef DNSCACHE_H
-#define DNSCACHE_H
+#ifndef EV_DNSCACHE_H
+#define EV_DNSCACHE_H
 
 #include <event2/event.h>
 #include <stdbool.h>

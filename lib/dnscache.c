@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <uthash.h>
 
-#include "dnscache.h"
+#include "evdnscache.h"
 #include "log.h"
 #include "str.h"
 

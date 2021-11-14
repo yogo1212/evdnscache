@@ -10,7 +10,7 @@ BINDIR = bin
 
 DIRS = $(APPOBJDIR) $(LIBOBJDIR) $(BINDIR)
 
-INCDIR = include
+INCDIRS = include include_internal
 
 LIBSOURCES = $(wildcard $(LIBSRCDIR)/*.c)
 LIBOBJECTS = $(patsubst $(LIBSRCDIR)/%.c,$(LIBOBJDIR)/%.o,$(LIBSOURCES))
@@ -21,7 +21,7 @@ APPOBJECTS = $(patsubst $(APPSRCDIR)/%.c,$(APPOBJDIR)/%.o,$(APPSOURCES))
 LIBBIN = $(BINDIR)/lib$(NAME).a
 APPBIN = $(BINDIR)/$(NAME)
 
-CFLAGS += -std=gnu99 -pedantic -Wall -Wextra -I$(INCDIR)
+CFLAGS += -std=gnu99 -pedantic -Wall -Wextra $(patsubst %,-I%,$(INCDIRS))
 
 ifeq (1,$(DEBUG))
 CFLAGS += -g
@@ -35,7 +35,7 @@ CFLAGS += $(DEFINES)
 LIBCFLAGS += $(CFLAGS)
 
 APPCFLAGS += $(CFLAGS)
-APPLDFLAGS += -Lbin/ -levdnscache
+APPLDFLAGS += -Wl,-Bstatic -Lbin/ -levdnscache -Wl,-Bdynamic -levent
 
 
 .PHONY: clean default debug
