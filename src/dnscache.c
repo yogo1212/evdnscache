@@ -23,7 +23,8 @@ struct ipv4_entry {
 	UT_hash_handle hh;
 };
 
-#define MAX_HOSTNAME_LEN_WITH_ZT 256
+#define MAX_HOSTNAME_LEN_WITH_ZT (253 + 1) // DNS limit
+
 typedef struct {
 	char hostname[MAX_HOSTNAME_LEN_WITH_ZT];
 
