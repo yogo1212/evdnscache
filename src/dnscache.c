@@ -8,6 +8,7 @@
 #include "log.h"
 #include "str.h"
 
+// TODO handle IPv6 as well
 struct ipv4_entry;
 typedef struct ipv4_entry ipv4_entry_t;
 
@@ -32,6 +33,8 @@ typedef struct {
 
 	UT_hash_handle hh;
 } dnscache_entry_t;
+
+// TODO try to reduce vars in global scope
 static dnscache_entry_t *url_list;
 
 struct {
@@ -221,6 +224,7 @@ void dnscache_add(const char *name)
 bool dnscache_init(struct event_base *base, dnscache_add_cb add_cb, dnscache_expire_cb expire_cb, void *ctx)
 {
 	dnscache.evb = base;
+	// TODO HUP to reload resolv.conf
 	dnscache.edb = evdns_base_new(base, 0);
 	if (!dnscache.edb) {
 		log_error("!edb");
