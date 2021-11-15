@@ -1,0 +1,31 @@
+#!/bin/sh -e
+
+echo "$@" >&2
+
+chain=allowSshFrom
+
+if [ "$1" = init ]; then
+	iptables -F $chain
+	ip6tables -F $chain
+	exit
+fi
+
+# close stdout to not have evdnscache wait for us
+exec >&-
+
+echo "RECORD_TYPE: $RECORD_TYPE" >&2
+
+case "$RECORD_TYPE" in
+A)
+	which_tables=iptables
+	break
+	;;
+AAAA)
+	which_tables=ip6tables
+	break
+	;;
+*)
+	printf "unknown record type: %s" "$RECORD_TYPE" >&2
+esac
+
+$which_tables -I $chain -p tcp -m tcp --dport 22 -j ACCEPT

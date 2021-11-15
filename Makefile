@@ -29,7 +29,7 @@ else
 CFLAGS += -O2
 endif
 
-CFLAGS += -fPIC
+CFLAGS += -fPIC -D_GNU_SOURCE
 CFLAGS += $(DEFINES)
 
 LIBCFLAGS += $(CFLAGS)
