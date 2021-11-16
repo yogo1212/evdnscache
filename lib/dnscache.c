@@ -8,6 +8,8 @@
 #include "log.h"
 #include "str.h"
 
+// TODO libevent does round-robin when there are multiple DNS servers
+
 // TODO handle IPv6 as well
 struct ipv4_entry;
 typedef struct ipv4_entry ipv4_entry_t;
