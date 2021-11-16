@@ -228,20 +228,52 @@ bool dnscache_add(const char *name, dnscache_add_cb add_cb, dnscache_expire_cb e
 	return true;
 }
 
+bool dnscache_reload_resolv_conf(void)
+{
+	const char *resolv_conf = getenv("DNSCACHE_RESOLV_CONF");
+	if (!resolv_conf)
+		resolv_conf = "/etc/resolv.conf";
+
+	if (evdns_base_clear_nameservers_and_suspend(dnscache.edb) == -1) {
+		log_error("couldn't halt name resolution");
+		return false;
+	}
+
+	int res = evdns_base_resolv_conf_parse(dnscache.edb, DNS_OPTIONS_ALL, resolv_conf);
+	if (res) {
+		log_error("couldn't load resolv.conf \"%s\": %d", resolv_conf, res);
+		return false;
+	}
+
+	if (evdns_base_resume(dnscache.edb) == -1) {
+		log_error("couldn't resume name resolution");
+		return false;
+	}
+
+	return true;
+}
+
 bool dnscache_init(struct event_base *base)
 {
 	dnscache.evb = base;
 
-	// TODO HUP to reload resolv.conf
-	dnscache.edb = evdns_base_new(base, EVDNS_BASE_INITIALIZE_NAMESERVERS);
+	dnscache.edb = evdns_base_new(base, 0);
 	if (!dnscache.edb) {
-		log_error("!edb");
+		log_error("!evdns_base_new");
 		return false;
+	}
+
+	if (!dnscache_reload_resolv_conf()) {
+		goto ouch_base;
 	}
 
 	dnscache.url_list = NULL;
 
 	return true;
+
+ouch_base:
+	evdns_base_free(dnscache.edb, 1);
+	return false;
 }
 
 void dnscache_cleanup(void)

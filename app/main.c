@@ -28,6 +28,26 @@ static void _add_cb(const char *hostname, const char *value, void *ctx)
 	unsetenv(RECORD_TYPE_ENV);
 }
 
+static void reload_resolv_conf(int fd, short events, void *arg)
+{
+	(void) fd;
+	(void) events;
+	(void) arg;
+
+	log_info("reload resolv.conf");
+	// TODO might want to die if it fails
+	dnscache_reload_resolv_conf();
+}
+
+static void end_loop(int fd, short events, void *arg)
+{
+	(void) events;
+	struct event_base *base = arg;
+
+	log_info("ending on user request (signal %d)", fd);
+	event_base_loopbreak(base);
+}
+
 int main(int argc, char *argv[])
 {
 	struct event_base *base = event_base_new();
@@ -54,7 +74,20 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	struct event *sighup_event = evsignal_new(base, SIGHUP, reload_resolv_conf, NULL);
+	event_add(sighup_event, NULL);
+
+	struct event *sigint_event = evsignal_new(base, SIGINT, end_loop, base);
+	event_add(sig_event, NULL);
+
+	struct event *sigterm_event = evsignal_new(base, SIGTERM, end_loop, base);
+	event_add(sig_event, NULL);
+
 	event_base_dispatch(base);
+
+	event_free(sigterm_event);
+	event_free(sigint_event);
+	event_free(sighup_event);
 
 cleanup_dnscache:
 	dnscache_cleanup();
